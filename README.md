@@ -1,52 +1,55 @@
 # ADS-B Radar (RTL-SDR 1090MHz)
 
-This project is a **from-scratch ADS-B receiver and decoder**, written entirely in Python, processing raw RF signals from an RTL-SDR at 1090 MHz.
+A **from-scratch ADS-B receiver and decoder**, written entirely in Python, processing raw RF samples from an RTL-SDR.
 
-The goal:  
-Understand and implement the full **physical layer** of ADS-B — from I/Q samples → magnitude → pulse detection → PPM demodulation → CRC → message decoding → live radar display.
+The goal is to understand and implement the full **physical layer** of ADS-B —  
+from raw IQ samples → magnitude → pulse detection → bitstream → full message decoding.
 
 ---
 
-## ✈️ Features
+## ✈ Features
 
-### ✔ Real-time SDR capture  
-- RTL-SDR direct sampling at **2 MSPS**  
-- Gain control optimized for weak / strong signals  
-- Large buffer reads to avoid packet loss  
+### ✔ Real-time SDR capture
+- RTL-SDR sampling at **2 MSPS**
+- Configurable gain
+- Large buffered reads to avoid packet loss
 
-### ✔ DSP Pipeline  
-- Magnitude extraction  
-- Dynamic thresholding  
-- Peak detection  
-- 112-bit **PPM demodulation**  
-- Mode-S CRC check (poly: `0xFFF409`)  
+### ✔ DSP Pipeline
+- IQ → magnitude
+- Dynamic thresholding
+- Peak detection
+- 112-bit **PPM demodulation**
+- Full Mode-S CRC check (`0xFFF409`)
 
-### ✔ ADS-B Message Decoding  
-- DF=17 Extended Squitter  
-- ICAO  
-- Callsign (Type Code 1–4)  
-- Altitude (Type Code 9–18)  
-- Airborne Velocity (Type Code 19)  
-- Local CPR position decoding  
+### ✔ ADS-B Message Decoding
+- DF=17 Extended Squitter
+- ICAO address
+- Callsign (TC 1–4)
+- Altitude (TC 9–18)
+- Airborne velocity + heading (TC 19)
+- Local CPR position decoding (Shoham-anchored reference)
 
-### ✔ Live Terminal Radar  
-Displays:  
+### ✔ Live Terminal Radar
+Displays:
 - ICAO  
 - Callsign  
 - Altitude  
-- Speed / Heading  
-- Position (lat/lon)  
-- Last seen  
-- Packet count (Booster version)
+- Speed  
+- Heading  
+- Latitude/Longitude  
+- Distance from station  
+- Last seen time  
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-adsb_radar/
-├── adsb_booster_radar.py
-├── adsb_shoham_terminal_radar.py
+/adsb_radar
+├── radar_adsb.py                 # Main radar script (distance, velocity, heading, CPR, improved decoding)
+├── archive/                      # Older versions kept for history
+│   ├── adsb_booster_radar.py
+│   └── adsb_shoham_terminal_radar.py
 ├── README.md
 └── .gitignore
 ```
@@ -65,31 +68,40 @@ pip install numpy pyrtlsdr
 
 ## 🚀 Running the Radar
 
-Run the optimized Booster version:
+Start live decoding:
 
 ```bash
-python adsb_booster_radar.py
+python3 radar_adsb.py
 ```
 
-Or run the Shoham Terminal version:
+---
 
-```bash
-python adsb_shoham_terminal_radar.py
-```
+## 📡 Hardware Requirements
+- RTL-SDR Blog V3/V4 (or any compatible 1090 MHz receiver)
+- Python 3.8+
+- Modules: `pyrtlsdr`, `numpy`
+
+---
+
+## 🛰 Project Philosophy
+
+This project focuses on **understanding ADS-B at the physical layer**, without shortcuts:
+
+- No `dump1090`
+- No pre-made decoders
+- Manual PPM pulse extraction
+- Bit slicing
+- CRC validation
+- Local CPR decoding
+- Velocity / heading reconstruction
+
+Everything here is implemented by hand from raw RF → decoded messages.
 
 ---
 
 ## 🗺 Next Steps (Work in Progress)
 
-- GUI Radar (map + tracks)
-- Decoder refactor into modules (`decoder/`, `dsp/`, `gui/`)
-- Recording I/Q data for offline DSP analysis
+- GUI Radar (map + aircraft tracks)
+- Split project into modules (`dsp/`, `decoder/`, `gui/`)
+- I/Q recording for offline DSP experiments
 - Interactive web dashboard
-- Add Docker environment
-
----
-
-## 📌 Notes
-
-This project is intentionally built **from scratch**, without using any existing ADS-B decoding libraries — to understand every stage of the physical-layer signal chain.
-
