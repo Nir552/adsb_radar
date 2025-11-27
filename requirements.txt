@@ -1,0 +1,7 @@
+numpy
+customtkinter
+tkintermapview
+matplotlib
+Pillow
+requests
+rtlsdr

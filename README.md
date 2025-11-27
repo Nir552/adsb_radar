@@ -1,107 +1,232 @@
-# ADS-B Radar (RTL-SDR 1090MHz)
+```markdown
+# ✈️ ADS-B RADAR — Full End-to-End System  
+RTL-SDR → DSP → Decoding → UDP JSON → GUI Radar Map
 
-A **from-scratch ADS-B receiver and decoder**, written entirely in Python, processing raw RF samples from an RTL-SDR.
-
-The goal is to understand and implement the full **physical layer** of ADS-B —  
-from raw IQ samples → magnitude → pulse detection → bitstream → full message decoding.
-
----
-
-## ✈ Features
-
-### ✔ Real-time SDR capture
-- RTL-SDR sampling at **2 MSPS**
-- Configurable gain
-- Large buffered reads to avoid packet loss
-
-### ✔ DSP Pipeline
-- IQ → magnitude
-- Dynamic thresholding
-- Peak detection
-- 112-bit **PPM demodulation**
-- Full Mode-S CRC check (`0xFFF409`)
-
-### ✔ ADS-B Message Decoding
-- DF=17 Extended Squitter
-- ICAO address
-- Callsign (TC 1–4)
-- Altitude (TC 9–18)
-- Airborne velocity + heading (TC 19)
-- Local CPR position decoding (Shoham-anchored reference)
-
-### ✔ Live Terminal Radar
-Displays:
-- ICAO  
-- Callsign  
-- Altitude  
-- Speed  
-- Heading  
-- Latitude/Longitude  
-- Distance from station  
-- Last seen time  
+This project builds a complete real-time ADS-B receiver **from scratch**:
+- Full RAW DSP (power extraction, smoothing, thresholding)
+- Preamble detection (Mode-S)
+- PPM bit decoding (112 bits)
+- CRC validation + ADS-B message parsing  
+- CPR local position decoding  
+- UDP real-time aircraft stream  
+- GUI radar with map, icons, trails, intelligence module  
+- Research dashboard & FFT tools
 
 ---
 
-## 📁 Repository Structure
+# 📂 Project Structure
 
 ```
-/adsb_radar
-├── radar_adsb.py                 # Main radar script (distance, velocity, heading, CPR, improved decoding)
-├── archive/                      # Older versions kept for history
-│   ├── adsb_booster_radar.py
-│   └── adsb_shoham_terminal_radar.py
+adsb_radar/
+│
+├── CORE.py     # Backend DSP + ADS-B decoder + UDP sender
+├── MAIN.py     # Frontend GUI radar + map + plane visualization
 ├── README.md
-└── .gitignore
+└── archive/    # Old versions
 ```
 
 ---
 
-## 🔧 Requirements
+# 🧠 System Architecture
 
-Install dependencies:
+```
++---------------------------- UDP JSON ----------------------------+
+|                                                                 |
+|                       (broadcasted every ~1s)                   |
++-----------------------------------------------------------------+
 
+    +----------------------+                       +----------------------+
+    |      CORE.py        | --------------------> |       MAIN.py        |
+    +----------------------+                       +----------------------+
+    | RTL-SDR capture      |                       | Radar GUI + map      |
+    | Threshold detect     |                       | Aircraft markers     |
+    | Preamble find        |                       | Trails + icons       |
+    | Bit decoding (PPM)   |                       | Plane intelligence   |
+    | CRC validation       |                       | Research dashboard   |
+    | ADS-B message parse  |                       | FFT visualization    |
+    | CPR local position   |                       | Data overlays        |
+    +----------------------+                       +----------------------+
+```
+
+CORE.py continuously decodes aircraft and sends each one as a JSON packet via UDP.  
+MAIN.py listens to UDP, draws the aircraft on a map GUI, and enriches data with intelligence.
+
+---
+
+# 🚀 Installation
+
+## 1. Clone project
 ```bash
-pip install numpy pyrtlsdr
+git clone <your-repo-url>
+cd adsb_radar
 ```
 
 ---
 
-## 🚀 Running the Radar
-
-Start live decoding:
-
+## 2. Create virtual environment
 ```bash
-python3 radar_adsb.py
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 ---
 
-## 📡 Hardware Requirements
-- RTL-SDR Blog V3/V4 (or any compatible 1090 MHz receiver)
-- Python 3.8+
-- Modules: `pyrtlsdr`, `numpy`
+## 3. Create `requirements.txt`
+```txt
+numpy
+pillow
+matplotlib
+customtkinter
+tkintermapview
+requests
+rtlsdr
+```
+
+Install:
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## 🛰 Project Philosophy
+## 4. Install RTL-SDR drivers (Linux)
+```bash
+sudo apt install rtl-sdr librtlsdr-dev
+```
 
-This project focuses on **understanding ADS-B at the physical layer**, without shortcuts:
-
-- No `dump1090`
-- No pre-made decoders
-- Manual PPM pulse extraction
-- Bit slicing
-- CRC validation
-- Local CPR decoding
-- Velocity / heading reconstruction
-
-Everything here is implemented by hand from raw RF → decoded messages.
+(Optional but recommended)
+```bash
+sudo apt install rtl-sdr-blacklist-dkms
+```
 
 ---
 
-## 🗺 Next Steps (Work in Progress)
+# 🏃‍♂️ Running the System
 
-- GUI Radar (map + aircraft tracks)
-- Split project into modules (`dsp/`, `decoder/`, `gui/`)
-- I/Q recording for offline DSP experiments
-- Interactive web dashboard
+## 🖥️ Terminal 1 — Backend (CORE)
+```bash
+cd adsb_radar
+source venv/bin/activate
+python3 CORE.py
+```
+
+### Expected output:
+```
+✅ SDR Connected.
+🚀 DEBUG MODE: Starting Radar Loop...
+✈️ NEW ICAO: 4XABC1 (RSSI: -47.2)
+📍 LOC FIX...
+📡 SENDING PLANES TO GUI
+```
+
+---
+
+## 🖥️ Terminal 2 — Frontend (MAIN)
+```bash
+cd adsb_radar
+source venv/bin/activate
+python3 MAIN.py
+```
+
+### Expected GUI:
+- Map centered on your location  
+- Aircraft icons updated live  
+- Trails behind each plane  
+- Intelligence (airline / type / flags)  
+- Live data table and speed/alt overlays  
+
+---
+
+# 📡 How the DSP Works (CORE.py)
+
+### 1. Capture I/Q from RTL-SDR  
+- tuned to 1090 MHz  
+- 2 MHz samplerate  
+- DC offset removal  
+
+### 2. Convert complex IQ → power  
+`power = I² + Q²`
+
+### 3. Smooth power (moving average)  
+Reduces noise enough to identify bursts.
+
+### 4. Threshold detection (adaptive)  
+MAD/STD based threshold:
+- identifies bursts  
+- isolates candidate messages  
+
+### 5. Preamble search  
+8-pulse Mode-S structure  
+checks timing correctness
+
+### 6. Bit decoding (PPM)  
+112 bits extracted based on pulse timing.
+
+### 7. CRC + ADS-B parse  
+- DF17/DF18  
+- ICAO  
+- callsign  
+- altitude  
+- typecode  
+- position (CPR)  
+- velocity  
+
+### 8. Send aircraft JSON via UDP  
+Sent to MAIN.py every ~1s.
+
+---
+
+# 🗺️ GUI Features (MAIN.py)
+
+- Real-time map (OpenStreetMap tiles)
+- Aircraft icons (rotated by track angle)
+- Trails (last positions)
+- Plane intelligence:
+  - airline lookup  
+  - type lookup  
+  - image fetch  
+- Data overlays (speed, altitude, distance)
+- FFT spectrum window
+- Research dashboard:
+  - counters  
+  - RSSI charts  
+  - ICAO logs  
+
+---
+
+# 🧪 Example UDP Packet
+
+```json
+{
+    "icao": "4XABC1",
+    "callsign": "ELY315",
+    "lat": 32.0521,
+    "lon": 34.8512,
+    "alt": 11250,
+    "speed": 455,
+    "track": 278,
+    "timestamp": 1732671927
+}
+```
+
+---
+
+# 🛠️ Notes
+
+- Works with all RTL-SDR dongles (including Blog V4)
+- Supports spider / ground plane / cantenna antennas
+- GUI uses `customtkinter` for dark mode + performance
+- CORE DSP is fully independent of dump1090  
+  (no external decoders — everything custom)
+
+---
+
+# 📜 License
+This project is for learning, research, and personal use.
+
+---
+
+# 🛰️ Credits
+Built entirely from scratch as part of a full DSP learning journey.
+
+```
