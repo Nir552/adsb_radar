@@ -1,232 +1,135 @@
-```markdown
-# ✈️ ADS-B RADAR — Full End-to-End System  
-RTL-SDR → DSP → Decoding → UDP JSON → GUI Radar Map
+📡 PySDR-ADSB: Full-Stack Real-Time Radar & RF Lab
 
-This project builds a complete real-time ADS-B receiver **from scratch**:
-- Full RAW DSP (power extraction, smoothing, thresholding)
-- Preamble detection (Mode-S)
-- PPM bit decoding (112 bits)
-- CRC validation + ADS-B message parsing  
-- CPR local position decoding  
-- UDP real-time aircraft stream  
-- GUI radar with map, icons, trails, intelligence module  
-- Research dashboard & FFT tools
+A "From Scratch" Software Defined Radio Implementation in Pure Python
 
----
+Core Philosophy: No dump1090. No external C libraries. No black boxes. This project implements the entire receiver chain—from raw I/Q samples to a complex research dashboard—entirely in Python to demonstrate mastery of the RF Physical Layer.
 
-# 📂 Project Structure
+📸 System Overview
 
-```
-adsb_radar/
-│
-├── CORE.py     # Backend DSP + ADS-B decoder + UDP sender
-├── MAIN.py     # Frontend GUI radar + map + plane visualization
-├── README.md
-└── archive/    # Old versions
-```
+The system features a dual-view interface: a tactical map for tracking and a dedicated research dashboard for signal analysis.
 
----
+### Advanced RF Lab (DSP Analysis) / Tactical Radar View (Live Tracking)
+- Real-time FFT, Doppler, and Path Loss analysis  
+- Live aircraft tracking over the Mediterranean
 
-# 🧠 System Architecture
+⚡ **Key Engineering Capabilities**
 
-```
-+---------------------------- UDP JSON ----------------------------+
-|                                                                 |
-|                       (broadcasted every ~1s)                   |
-+-----------------------------------------------------------------+
+## 🧠 1. The DSP Engine (CORE.py)
 
-    +----------------------+                       +----------------------+
-    |      CORE.py        | --------------------> |       MAIN.py        |
-    +----------------------+                       +----------------------+
-    | RTL-SDR capture      |                       | Radar GUI + map      |
-    | Threshold detect     |                       | Aircraft markers     |
-    | Preamble find        |                       | Trails + icons       |
-    | Bit decoding (PPM)   |                       | Plane intelligence   |
-    | CRC validation       |                       | Research dashboard   |
-    | ADS-B message parse  |                       | FFT visualization    |
-    | CPR local position   |                       | Data overlays        |
-    +----------------------+                       +----------------------+
-```
+A custom-built signal processing pipeline handling **2,000,000 samples per second** in real-time:
 
-CORE.py continuously decodes aircraft and sends each one as a JSON packet via UDP.  
-MAIN.py listens to UDP, draws the aircraft on a map GUI, and enriches data with intelligence.
+- **Signal Conditioning:** DC offset removal & dynamic noise floor calculation  
+- **Burst Detection:** Adaptive thresholding using statistical analysis (MAD/STD)  
+- **Demodulation:** Custom implementation of PPM slicing  
+- **Data Integrity:** Manual bitwise implementation of Mode-S CRC  
+- **Navigation Logic:** Full CPR decoding to resolve global coordinates  
 
 ---
 
-# 🚀 Installation
+## 🔬 2. The RF Laboratory (MAIN.py)
 
-## 1. Clone project
+Advanced physics and RF analysis tools:
+
+- **Doppler Shift Analysis**  
+- **Path Loss Validation** with Friis Equation  
+- **Antenna Pattern Mapping**  
+- **Time-Domain Fading Visualization**  
+- **Real-time FFT** for the 1090 MHz band  
+
+---
+
+## 🕵️ 3. Hybrid Intelligence
+
+- **OSINT Integration:** ICAO lookups  
+- **Visual Confirmation:** Real-time aircraft imagery  
+
+---
+
+## 🛠 System Architecture
+
+```
+graph LR
+    subgraph "Backend (DSP Process)"
+        A[RTL-SDR USB] -->|I/Q Samples @ 2MSPS| B(Signal Conditioner)
+        B -->|Magnitiude| C{Threshold Detect}
+        C -->|Preamble Found| D[PPM Demodulator]
+        D -->|Bits| E[CRC & Hex Decoder]
+        E -->|Valid Message| F[CPR & Physics Engine]
+    end
+
+    subgraph "Network Layer"
+        F -->|JSON Packet| G((UDP Socket 5005))
+    end
+
+    subgraph "Frontend (Visualization)"
+        G -->|Stream| H[Main GUI Thread]
+        H -->|Render| I[Map & Icons]
+        H -->|Calc| J[RF Analytics Plots]
+        H -.->|Async API| K[Cloud Data Source]
+    end
+```
+
+---
+
+## 🚀 Installation & Setup
+
+### 1. Prerequisites
+
+**Hardware:** RTL-SDR (Blog V3/V4 recommended) + 1090MHz antenna  
+**Drivers:**  
+```
+sudo apt install librtlsdr-dev
+```
+
+---
+
+### 2. Clone & Install
+
 ```bash
-git clone <your-repo-url>
-cd adsb_radar
-```
+git clone https://github.com/your-username/PySDR-ADSB.git
+cd PySDR-ADSB
 
----
-
-## 2. Create virtual environment
-```bash
 python3 -m venv venv
 source venv/bin/activate
-```
 
----
-
-## 3. Create `requirements.txt`
-```txt
-numpy
-pillow
-matplotlib
-customtkinter
-tkintermapview
-requests
-rtlsdr
-```
-
-Install:
-```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## 4. Install RTL-SDR drivers (Linux)
+### 3. ⚙ Configuration (Important)
+
+Open `CORE.py` and `MAIN.py` and update:
+
+```python
+REF_LAT = 32.000
+REF_LON = 34.000
+```
+
+---
+
+## 🏃‍♂️ Usage
+
+Start DSP + GUI:
+
 ```bash
-sudo apt install rtl-sdr librtlsdr-dev
-```
-
-(Optional but recommended)
-```bash
-sudo apt install rtl-sdr-blacklist-dkms
+python3 launcher.py
 ```
 
 ---
 
-# 🏃‍♂️ Running the System
+## 📂 Project Structure
 
-## 🖥️ Terminal 1 — Backend (CORE)
-```bash
-cd adsb_radar
-source venv/bin/activate
-python3 CORE.py
-```
-
-### Expected output:
-```
-✅ SDR Connected.
-🚀 DEBUG MODE: Starting Radar Loop...
-✈️ NEW ICAO: 4XABC1 (RSSI: -47.2)
-📍 LOC FIX...
-📡 SENDING PLANES TO GUI
-```
+| File | Description |
+|------|-------------|
+| CORE.py | DSP backend: I/Q, demod, decoding |
+| MAIN.py | GUI frontend: mapping, analytics |
+| launcher.py | Process orchestrator |
+| requirements.txt | Dependencies |
 
 ---
 
-## 🖥️ Terminal 2 — Frontend (MAIN)
-```bash
-cd adsb_radar
-source venv/bin/activate
-python3 MAIN.py
-```
+## 📜 License
 
-### Expected GUI:
-- Map centered on your location  
-- Aircraft icons updated live  
-- Trails behind each plane  
-- Intelligence (airline / type / flags)  
-- Live data table and speed/alt overlays  
-
----
-
-# 📡 How the DSP Works (CORE.py)
-
-### 1. Capture I/Q from RTL-SDR  
-- tuned to 1090 MHz  
-- 2 MHz samplerate  
-- DC offset removal  
-
-### 2. Convert complex IQ → power  
-`power = I² + Q²`
-
-### 3. Smooth power (moving average)  
-Reduces noise enough to identify bursts.
-
-### 4. Threshold detection (adaptive)  
-MAD/STD based threshold:
-- identifies bursts  
-- isolates candidate messages  
-
-### 5. Preamble search  
-8-pulse Mode-S structure  
-checks timing correctness
-
-### 6. Bit decoding (PPM)  
-112 bits extracted based on pulse timing.
-
-### 7. CRC + ADS-B parse  
-- DF17/DF18  
-- ICAO  
-- callsign  
-- altitude  
-- typecode  
-- position (CPR)  
-- velocity  
-
-### 8. Send aircraft JSON via UDP  
-Sent to MAIN.py every ~1s.
-
----
-
-# 🗺️ GUI Features (MAIN.py)
-
-- Real-time map (OpenStreetMap tiles)
-- Aircraft icons (rotated by track angle)
-- Trails (last positions)
-- Plane intelligence:
-  - airline lookup  
-  - type lookup  
-  - image fetch  
-- Data overlays (speed, altitude, distance)
-- FFT spectrum window
-- Research dashboard:
-  - counters  
-  - RSSI charts  
-  - ICAO logs  
-
----
-
-# 🧪 Example UDP Packet
-
-```json
-{
-    "icao": "4XABC1",
-    "callsign": "ELY315",
-    "lat": 32.0521,
-    "lon": 34.8512,
-    "alt": 11250,
-    "speed": 455,
-    "track": 278,
-    "timestamp": 1732671927
-}
-```
-
----
-
-# 🛠️ Notes
-
-- Works with all RTL-SDR dongles (including Blog V4)
-- Supports spider / ground plane / cantenna antennas
-- GUI uses `customtkinter` for dark mode + performance
-- CORE DSP is fully independent of dump1090  
-  (no external decoders — everything custom)
-
----
-
-# 📜 License
-This project is for learning, research, and personal use.
-
----
-
-# 🛰️ Credits
-Built entirely from scratch as part of a full DSP learning journey.
-
-```
+Educational & Research Use Only.  
+Created as part of an Electrical Engineering DSP portfolio.
