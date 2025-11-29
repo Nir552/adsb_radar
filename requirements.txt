@@ -4,4 +4,4 @@ tkintermapview
 matplotlib
 Pillow
 requests
-rtlsdr
+pyrtlsdr
